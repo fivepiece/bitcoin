@@ -729,7 +729,18 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     for (std::vector<std::pair<int64_t, CKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
         const CKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
-        std::string strAddr = EncodeDestination(keyid);
+        std::string strAddr;
+        switch (g_address_type) {
+            case OUTPUT_TYPE_LEGACY:
+                strAddr = EncodeDestination(keyid);
+                break;
+            case OUTPUT_TYPE_P2SH_SEGWIT:
+            case OUTPUT_TYPE_BECH32:
+                strAddr = EncodeDestination(WitnessV0KeyHash(keyid));
+                break;
+            default:
+                strAddr = "[unknown address type]";
+        }
         CKey key;
         if (pwallet->GetKey(keyid, key)) {
             file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
