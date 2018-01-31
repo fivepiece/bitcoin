@@ -740,6 +740,8 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                         strAddr = EncodeDestination(keyid);
                         break;
                     case OUTPUT_TYPE_P2SH_SEGWIT:
+                        strAddr = EncodeDestination(CScriptID(CScript() << OP_0 << ToByteVector(WitnessV0KeyHash(keyid))));
+                        break;
                     case OUTPUT_TYPE_BECH32:
                         strAddr = EncodeDestination(WitnessV0KeyHash(keyid));
                         break;
