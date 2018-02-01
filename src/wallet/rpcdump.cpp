@@ -730,10 +730,14 @@ UniValue dumpwallet(const JSONRPCRequest& request)
         const CKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
         std::string strAddr;
+        std::string strLabel;
+        bool fLabelFound = false;
         CKey key;
         if (pwallet->GetKey(keyid, key)) {
             if (!key.IsCompressed()) {
                 strAddr = EncodeDestination(keyid);
+                strLabel = EncodeDumpString(pwallet->mapAddressBook[keyid].name);
+                fLabelFound = true;
             } else {
                 CTxDestination p2wpkhAddr;
                 CTxDestination p2shAddr;
@@ -741,18 +745,34 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                 CScript p2shScr = GetScriptForDestination(CScriptID(p2wpkhScr));
                 ExtractDestination(p2wpkhScr, p2wpkhAddr);
                 ExtractDestination(p2shScr, p2shAddr);
-                if (pwallet->mapAddressBook.find(keyid) != pwallet->mapAddressBook.end())
-                    strAddr = EncodeDestination(keyid);
-                else if (pwallet->mapAddressBook.find(p2wpkhAddr) != pwallet->mapAddressBook.end())
-                    strAddr = EncodeDestination(WitnessV0KeyHash(keyid));
-                else if (pwallet->mapAddressBook.find(p2shAddr) != pwallet->mapAddressBook.end())
-                    strAddr = EncodeDestination(CScriptID(WitnessV0KeyHash(keyid)));
-                else {
+                // if (pwallet->mapAddressBook.find(keyid) != pwallet->mapAddressBook.end()) {
+                if (pwallet->mapAddressBook.count(keyid)) {
+                    strAddr += EncodeDestination(keyid) + ",";
+                    strLabel = EncodeDumpString(pwallet->mapAddressBook[keyid].name);
+                    fLabelFound = true;
+                }
+                // if (pwallet->mapAddressBook.find(p2wpkhAddr) != pwallet->mapAddressBook.end()) {
+                if (pwallet->mapAddressBook.count(p2wpkhAddr)) {
+                    strAddr += EncodeDestination(WitnessV0KeyHash(keyid));
+                    strLabel = EncodeDumpString(pwallet->mapAddressBook[p2wpkhAddr].name);
+                    fLabelFound = true;
+                }
+                // if (pwallet->mapAddressBook.find(p2shAddr) != pwallet->mapAddressBook.end()) {
+                if (pwallet->mapAddressBook.count(CScriptID(p2wpkhScr))) {
+                    if (!strAddr.empty())
+                        strAddr += ",";
+                    strAddr += EncodeDestination(CScriptID(p2wpkhScr));
+                    strLabel = EncodeDumpString(pwallet->mapAddressBook[CScriptID(p2wpkhScr)].name);
+                    fLabelFound = true;
+                }
+                if (!fLabelFound) {
                     switch (g_address_type) {
                     case OUTPUT_TYPE_LEGACY:
                         strAddr = EncodeDestination(keyid);
                         break;
                     case OUTPUT_TYPE_P2SH_SEGWIT:
+                        strAddr = EncodeDestination(CScriptID(p2wpkhScr));
+                        break;
                     case OUTPUT_TYPE_BECH32:
                         strAddr = EncodeDestination(WitnessV0KeyHash(keyid));
                         break;
@@ -762,8 +782,8 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                 }
             }
             file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
-            if (pwallet->mapAddressBook.count(keyid)) {
-                file << strprintf("label=%s", EncodeDumpString(pwallet->mapAddressBook[keyid].name));
+            if (fLabelFound) {
+               file << strprintf("label=%s", strLabel);
             } else if (keyid == masterKeyID) {
                 file << "hdmaster=1";
             } else if (mapKeyPool.count(keyid)) {
