@@ -745,19 +745,18 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                 CScript p2shScr = GetScriptForDestination(CScriptID(p2wpkhScr));
                 ExtractDestination(p2wpkhScr, p2wpkhAddr);
                 ExtractDestination(p2shScr, p2shAddr);
-                // if (pwallet->mapAddressBook.find(keyid) != pwallet->mapAddressBook.end()) {
                 if (pwallet->mapAddressBook.count(keyid)) {
-                    strAddr += EncodeDestination(keyid) + ",";
+                    strAddr = EncodeDestination(keyid);
                     strLabel = EncodeDumpString(pwallet->mapAddressBook[keyid].name);
                     fLabelFound = true;
                 }
-                // if (pwallet->mapAddressBook.find(p2wpkhAddr) != pwallet->mapAddressBook.end()) {
                 if (pwallet->mapAddressBook.count(p2wpkhAddr)) {
+                    if (!strAddr.empty())
+                        strAddr += ",";
                     strAddr += EncodeDestination(WitnessV0KeyHash(keyid));
                     strLabel = EncodeDumpString(pwallet->mapAddressBook[p2wpkhAddr].name);
                     fLabelFound = true;
                 }
-                // if (pwallet->mapAddressBook.find(p2shAddr) != pwallet->mapAddressBook.end()) {
                 if (pwallet->mapAddressBook.count(CScriptID(p2wpkhScr))) {
                     if (!strAddr.empty())
                         strAddr += ",";
