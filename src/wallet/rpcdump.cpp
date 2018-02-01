@@ -735,7 +735,20 @@ UniValue dumpwallet(const JSONRPCRequest& request)
             if (!key.IsCompressed()) {
                 strAddr = EncodeDestination(keyid);
             } else {
-                switch (g_address_type) {
+                CTxDestination p2wpkhAddr;
+                CTxDestination p2shAddr;
+                CScript p2wpkhScr = GetScriptForDestination(WitnessV0KeyHash(keyid));
+                CScript p2shScr = GetScriptForDestination(CScriptID(p2wpkhScr));
+                ExtractDestination(p2wpkhScr, p2wpkhAddr);
+                ExtractDestination(p2shScr, p2shAddr);
+                if (pwallet->mapAddressBook.find(keyid) != pwallet->mapAddressBook.end())
+                    strAddr = EncodeDestination(keyid);
+                else if (pwallet->mapAddressBook.find(p2wpkhAddr) != pwallet->mapAddressBook.end())
+                    strAddr = EncodeDestination(WitnessV0KeyHash(keyid));
+                else if (pwallet->mapAddressBook.find(p2shAddr) != pwallet->mapAddressBook.end())
+                    strAddr = EncodeDestination(CScriptID(WitnessV0KeyHash(keyid)));
+                else {
+                    switch (g_address_type) {
                     case OUTPUT_TYPE_LEGACY:
                         strAddr = EncodeDestination(keyid);
                         break;
@@ -745,6 +758,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
                         break;
                     default:
                         strAddr = "[unknown address type]";
+                    }
                 }
             }
             file << strprintf("%s %s ", CBitcoinSecret(key).ToString(), strTime);
